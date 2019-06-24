@@ -6,7 +6,7 @@
 
 
 
-Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weighted", "unweighted") , analysis = c("Motifs", "TDA", "Giant Component", "Connectivity Loss"), type = c("degree", "V_betweenness", "strength" , "weight_hier", "E_betweenness"), net_val, frac_val){
+Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weighted", "unweighted") , analysis = c("Motifs", "TDA", "Conv_Small", "Connectivity Loss"), type = c("degree", "betweeness", "strength" , "weight_hier", "E_betweeness"), net_val, frac_val){
   
   
   #=== TDA necessities ===#
@@ -98,7 +98,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
           
         }
         
-        else if (type == "V_betweenness") #===== betweenness centrality - Based Attacks =====# 
+        else if (type == "betweeness") #===== Betweeness centrality - Based Attacks =====# 
         {
           if (i <= frac_len)
           {
@@ -108,7 +108,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
           
         }
         
-        else if (type == "strength") #===== Strength - Based Attacks =====# 
+        else if (type == "strength") #===== Betweeness centrality - Based Attacks =====# 
         {
           if (i <= frac_len)
           {
@@ -145,9 +145,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
     else if(analysis == "TDA") 
     {
       
-      if(graph_type == "weighted"){
-        
-        for (i in 1:(frac_len)){ 
+        for (i in 1:(frac_len + 1)){ 
           
           
           A1 =  get.adjacency(network, attr="weight")
@@ -218,7 +216,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
             
           }
           
-          else if(type == "V_betweenness") #===== betweenness centrality - Based Attacks =====# 
+          else if (type == "betweeness") #===== Betweeness centrality - Based Attacks =====# 
           {
             if (i <= frac_len)
             {
@@ -228,7 +226,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
             
           }
           
-          else if (type == "strength") #===== Strength - Based Attacks =====# 
+          else if (type == "strength") #===== Betweeness centrality - Based Attacks =====# 
           {
             if (i <= frac_len)
             {
@@ -242,106 +240,8 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
           
         }
         
-      }
       
-      else if(graph_type == "unweighted"){
-        
-        for (i in 1:(frac_len)){ 
-          
-          
-          A1 = get.adjacency(network, sparse=FALSE)
-          A2 = as.matrix(A1)
-          
-          A2[A2 > 0] = 1 # collapse multiple edges to one
-          A2 = 1-A2    # if edge - distance 0, if no edge - distance 1
-          diag(A2) = 0 # set diagonal elemets to zero
-          
-          
-          d = length(V(network))
-          print(i)
-          
-          # writing data into file M.txt
-          cat(d,file='M.txt',append=F,sep = '\n')
-          cat(paste(0,delta,filt_len,cap,sep = ' '),file = 'M.txt',append = T,sep = '\n') 
-          cat(A2,file='M.txt',append = T) 
-          
-          system('perseusWin.exe distmat M.txt Moutput')
-          
-          # read Betti numbers from file Moutput_betti.txt
-          
-          betti_data = as.matrix(read.table('Moutput_betti.txt'))
-          betti_index = setdiff(0:filt_len,betti_data[,1])
-          
-          for (k in betti_index) 
-            if (k < length(betti_data[ ,1])) 
-            {
-              betti_data = rbind(betti_data[1:k, ], betti_data[k,], betti_data[(k+1):length(betti_data[,1]), ])
-              betti_index = betti_index + 1
-            } else
-              betti_data = rbind(betti_data[1:k,], betti_data[k,])
-          
-          betti_0 = rbind(betti_0, betti_data[,2])
-          betti_1 = rbind(betti_1, betti_data[,3])
-          
-          # read birth and death times for each dimension
-          
-          # dim = 0
-          persist_data = as.matrix(read.table('Moutput_0.txt'))
-          persist_data[persist_data[,2] == -1, 2] = filt_len + 1
-          persist_data = persist_data/(filt_len + 1)
-          P = cbind(rep(0, nrow(persist_data)), persist_data)
-          
-          # dim = 1
-          if (file.info('Moutput_1.txt')$size>0)
-          { 
-            persist_data = as.matrix(read.table('Moutput_1.txt', blank.lines.skip = T))
-            persist_data[persist_data[,2] == -1, 2] = filt_len + 1
-            persist_data = persist_data/(filt_len + 1)
-            P = rbind(P, cbind(rep(1, nrow(persist_data)), persist_data))
-            
-          }
-          
-          if (i == 1) P_org = P  
-          
-          wasser_dist_01 = c(wasser_dist_01, wasserstein(P_org, P, dimension = c(0,1)))
-          
-          
-          if (type == "degree") #===== Degree - Based Attacks =====# 
-          {
-            if (i <= frac_len)
-            {
-              nodes_to_delete = V(network_org)[deg_org[1:round(d_ord*frac[i])]]
-              network = delete_vertices(network_org, nodes_to_delete)
-              
-            }
-            
-          }
-          
-          else if (type == "V_betweenness") #===== betweenness centrality - Based Attacks =====# 
-          {
-            if (i <= frac_len)
-            {
-              nodes_to_delete = V(network_org)[bet_org[1:round(b_ord*frac[i])]]
-              network = delete_vertices(network_org, nodes_to_delete)    
-            }
-            
-          }
-          
-          else if (type == "strength") #===== Strength - Based Attacks =====# 
-          {
-            if (i <= frac_len)
-            {
-              nodes_to_delete = V(network_org)[str_ord[1:round(s_ord*frac[i])]]
-              network = delete_vertices(network_org, nodes_to_delete)    
-            }
-            
-          }
-          
-          
-          
-        }
-        
-      }
+      
       
       norm_const0 = norm(as.matrix(betti_0[1,]), type = '2')
       betti_0_DistS = as.matrix(dist(betti_0))/norm_const0
@@ -349,14 +249,14 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
       norm_const1 = norm(as.matrix(betti_1[1,]),type = '2')
       betti_1_DistS = as.matrix(dist(betti_1))/norm_const1
       
-      resultsN = data.frame( frac_val, betti_0_DistS[1,], betti_1_DistS[1,], wasser_dist_01)
+      resultsN = data.frame( c(0, frac_val), betti_0_DistS[1,], betti_1_DistS[1,], wasser_dist_01)
       
     }
     
     
     
     # 3. Giant Component Analysis #
-    else if (analysis == "Giant Component")
+    else if (analysis == "Conv_Small")
     {
       for (i in 1:(frac_len + 1)){ 
         
@@ -383,7 +283,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
           
         }
         
-        else if (type == "V_betweenness") #===== betweenness centrality - Based Attacks =====# 
+        else if (type == "betweeness") #===== Betweeness centrality - Based Attacks =====# 
         {
           if (i <= frac_len)
           {
@@ -393,7 +293,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
           
         }
         
-        else if (type == "strength") #===== Strength - Based Attacks =====# 
+        else if (type == "strength") #===== Betweeness centrality - Based Attacks =====# 
         {
           if (i <= frac_len)
           {
@@ -447,7 +347,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
           
         }
         
-        else if (type == "V_betweenness") #===== betweenness centrality - Based Attacks =====# 
+        else if (type == "betweeness") #===== Betweeness centrality - Based Attacks =====# 
         {
           if (i <= frac_len)
           {
@@ -457,7 +357,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
           
         }
         
-        else if (type == "strength") #===== Strength - Based Attacks =====# 
+        else if (type == "strength") #===== Betweeness centrality - Based Attacks =====# 
         {
           if (i <= frac_len)
           {
@@ -512,7 +412,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
         Tot_V[i] = sum(m2[5],m2[7],m2[8],m2[9],m2[10],m2[11])
         #-------------------------------------------------#
         
-        if (type == "weight_hier") #===== Plain weight - Based Attacks =====# 
+        if (type == "weight_hier") #===== Degree - Based Attacks =====# 
         {
           if (i <= frac_len)
           {
@@ -523,7 +423,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
           
         }
         
-        else if (type == "E_betweenness") #===== betweenness centrality - Based Attacks =====# 
+        else if (type == "E_betweeness") #===== Betweeness centrality - Based Attacks =====# 
         {
           if (i <= frac_len)
           {
@@ -557,10 +457,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
     
     else if(analysis == "TDA") 
     {
-      
-      if(graph_type == "weighted"){
-        
-        for (i in 1:(frac_len)){ 
+        for (i in 1:(frac_len + 1)){ 
           
           A1 =  get.adjacency(network, attr="weight")
           A2 = as.matrix(A1)
@@ -618,7 +515,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
           wasser_dist_01 = c(wasser_dist_01, wasserstein(P_org, P, dimension = c(0,1)))
           
           
-          if (type == "weight_hier") #===== Plain weight - Based Attacks =====# 
+          if (type == "weight_hier") #===== Degree - Based Attacks =====# 
           {
             if (i <= frac_len)
             {
@@ -629,7 +526,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
             
           }
           
-          else if (type == "E_betweenness") #===== betweenness centrality - Based Attacks =====# 
+          else if (type == "E_betweeness") #===== Betweeness centrality - Based Attacks =====# 
           {
             if (i <= frac_len)
             {
@@ -641,103 +538,16 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
           
         }
         
-      }
-      
-      else if(graph_type == "unweighted"){
-        
-        
-        for (i in 1:(frac_len)){ 
-          
-          A1 = get.adjacency(network, sparse=FALSE)
-          A2 = as.matrix(A1)
-          
-          A2[A2 > 0] = 1 # collapse multiple edges to one
-          A2 = 1 - A2    # if edge - distance 0, if no edge - distance 1
-          diag(A2) = 0 # set diagonal elemets to zero
-          
-          
-          d = length(V(network))
-          print(i)
-          
-          # writing data into file M.txt
-          cat(d,file = 'M.txt',append=F,sep = '\n')
-          cat(paste(0,delta,filt_len,cap,sep = ' '),file = 'M.txt',append = T,sep = '\n') 
-          cat(A2,file = 'M.txt',append = T) 
-          
-          system('perseusWin.exe distmat M.txt Moutput')
-          
-          # read Betti numbers from file Moutput_betti.txt
-          
-          betti_data = as.matrix(read.table('Moutput_betti.txt'))
-          betti_index = setdiff(0:filt_len,betti_data[,1])
-          
-          for (k in betti_index) 
-            if (k < length(betti_data[ ,1])) 
-            {
-              betti_data = rbind(betti_data[1:k, ], betti_data[k,], betti_data[(k+1):length(betti_data[,1]), ])
-              betti_index = betti_index + 1
-            } else
-              betti_data = rbind(betti_data[1:k,], betti_data[k,])
-          
-          betti_0 = rbind(betti_0, betti_data[,2])
-          betti_1 = rbind(betti_1, betti_data[,3])
-          
-          # read birth and death times for each dimension
-          
-          # dim = 0
-          persist_data = as.matrix(read.table('Moutput_0.txt'))
-          persist_data[persist_data[,2] == -1, 2] = filt_len + 1
-          persist_data = persist_data/(filt_len + 1)
-          P = cbind(rep(0, nrow(persist_data)), persist_data)
-          
-          # dim = 1
-          if (file.info('Moutput_1.txt')$size>0)
-          { 
-            persist_data = as.matrix(read.table('Moutput_1.txt', blank.lines.skip = T))
-            persist_data[persist_data[,2] == -1, 2] = filt_len + 1
-            persist_data = persist_data/(filt_len + 1)
-            P = rbind(P, cbind(rep(1, nrow(persist_data)), persist_data))
-            
-          }
-          
-          if (i == 1) P_org = P  
-          
-          wasser_dist_01 = c(wasser_dist_01, wasserstein(P_org, P, dimension = c(0,1)))
-          
-          
-          if (type == "weight_hier") #===== Plain weight - Based Attacks =====# 
-          {
-            if (i <= frac_len)
-            {
-              edges_to_delete = E(network_org)[edge_org[1:round(ed_ord*frac_val[i])]]
-              network = delete_edges(network_org, edges_to_delete)
-              
-            }
-            
-          }
-          
-          else if (type == "E_betweenness") #===== betweenness centrality - Based Attacks =====# 
-          {
-            if (i <= frac_len)
-            {
-              edges_to_delete = E(network_org)[ebet_org[1:round(eb_ord*frac_val[i])]]
-              network = delete_edges(network_org, edges_to_delete)    
-            }
-            
-          }
-          
-        } 
-      }
       
       
-      
+    
       norm_const0 = norm(as.matrix(betti_0[1,]), type = '2')
       betti_0_DistS = as.matrix(dist(betti_0))/norm_const0
       
       norm_const1 = norm(as.matrix(betti_1[1,]),type = '2')
       betti_1_DistS = as.matrix(dist(betti_1))/norm_const1
       
-      resultsN = data.frame(frac, betti_0_DistS[1,], betti_1_DistS[1,], wasser_dist_01) 
+      resultsN = data.frame(c(0, frac), betti_0_DistS[1,], betti_1_DistS[1,], wasser_dist_01) 
       #colnames(resultsN) = c("iter","fr", "betti_0", "betti_1")
       
     }
@@ -745,7 +555,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
     
     
     # 3. Giant Component Analysis #
-    else if (analysis == "Giant Component")
+    else if (analysis == "Conv_Small")
     {
       
       for (i in 1:(frac_len + 1)){ 
@@ -761,7 +571,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
         
         #-------------------------------------------------#
         
-        if (type == "weight_hier") #===== Plain weight - Based Attacks =====# 
+        if (type == "weight_hier") #===== Degree - Based Attacks =====# 
         {
           if (i <= frac_len)
           {
@@ -772,7 +582,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
           
         }
         
-        else if (type == "E_betweenness") #===== betweenness centrality - Based Attacks =====# 
+        else if (type == "E_betweeness") #===== Betweeness centrality - Based Attacks =====# 
         {
           if (i <= frac_len)
           {
@@ -815,7 +625,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
         
         #-------------------------------------------------#
         
-        if (type == "weight_hier") #===== Plain Weight - Based Attacks =====# 
+        if (type == "weight_hier") #===== Degree - Based Attacks =====# 
         {
           if (i <= frac_len)
           {
@@ -826,7 +636,7 @@ Resilience_Attacks2 = function(attack = c("node", "edge"),  graph_type = c("weig
           
         }
         
-        else if (type == "E_betweenness") #===== betweenness centrality - Based Attacks =====# 
+        else if (type == "E_betweeness") #===== Betweeness centrality - Based Attacks =====# 
         {
           if (i <= frac_len)
           {
